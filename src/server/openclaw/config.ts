@@ -508,6 +508,7 @@ export type GatewayConfigHashInput = {
   slackCredentials?: { botToken: string; signingSecret: string };
   whatsappConfig?: WhatsAppGatewayConfig;
   codexProfile?: boolean;
+  codexCredentialsUpdatedAt?: number | null;
 };
 
 export function computeGatewayConfigHash(input: GatewayConfigHashInput): string {
@@ -520,10 +521,13 @@ export function computeGatewayConfigHash(input: GatewayConfigHashInput): string 
     input.whatsappConfig,
     input.codexProfile,
   );
-  return createHash("sha256")
+  const hash = createHash("sha256")
     .update(`gateway-config-hash:v${GATEWAY_CONFIG_HASH_VERSION}\0`)
-    .update(configJson)
-    .digest("hex");
+    .update(configJson);
+  if (input.codexCredentialsUpdatedAt != null) {
+    hash.update("\0codex-updated-at:").update(String(input.codexCredentialsUpdatedAt));
+  }
+  return hash.digest("hex");
 }
 
 export function buildForcePairScript(): string {
