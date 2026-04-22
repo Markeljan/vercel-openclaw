@@ -494,7 +494,8 @@ export type SingleMeta = {
   hotSpare?: HotSpareState;
   /** OAuth credentials for OpenClaw's `openai-codex` provider. When non-null,
    *  the sandbox uses ChatGPT backend for inference and skips the AI Gateway
-   *  credential transform. `null` / absent = AI Gateway mode (default). */
+   *  credential transform. `null` / absent = AI Gateway mode (default).
+   *  Managed via `PUT /api/admin/auth/codex`. */
   codexCredentials?: CodexCredentials | null;
 };
 
