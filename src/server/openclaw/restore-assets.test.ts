@@ -10,8 +10,8 @@ import {
   buildWorkerSandboxRestoreFiles,
   OPENCLAW_CODEX_AUTH_PROFILES_PATH,
   OPENCLAW_RESTORE_ASSET_MANIFEST_PATH,
-  type CodexCredentials,
 } from "@/server/openclaw/restore-assets";
+import type { CodexCredentials } from "@/shared/types";
 import { computeGatewayConfigHash } from "@/server/openclaw/config";
 import {
   OPENCLAW_CONFIG_PATH,

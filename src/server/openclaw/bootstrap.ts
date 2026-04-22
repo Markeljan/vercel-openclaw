@@ -2,6 +2,7 @@ import { logError, logInfo, logWarn } from "@/server/log";
 import { getOpenclawPackageSpec, isVercelDeployment } from "@/server/env";
 import { isPinnedPackageSpec } from "@/server/deployment-contract";
 import type { WhatsAppGatewayConfig } from "@/server/openclaw/config";
+import type { CodexCredentials } from "@/shared/types";
 import {
   buildStartupScript,
   BUN_BIN,
@@ -87,6 +88,7 @@ export async function setupOpenClaw(
     slackCredentials?: { botToken: string; signingSecret: string };
     telegramWebhookSecret?: string;
     whatsappConfig?: WhatsAppGatewayConfig;
+    codexCredentials?: CodexCredentials | null;
     progress?: SetupProgressWriter;
   },
 ): Promise<{ startupScript: string; openclawVersion: string | null; runtime: BootstrapRuntime }> {
@@ -266,6 +268,7 @@ export async function setupOpenClaw(
       telegramWebhookSecret: options.telegramWebhookSecret,
       slackCredentials: options.slackCredentials,
       whatsappConfig: options.whatsappConfig,
+      codexCredentials: options.codexCredentials ?? undefined,
     }),
     {
       path: OPENCLAW_INSTALL_PATCH_SCRIPT_PATH,

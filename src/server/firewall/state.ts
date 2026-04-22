@@ -317,7 +317,10 @@ export async function syncFirewallPolicyIfRunning(
     // typically expires after ~1h and causes AI Gateway 401s with no recovery.
     const credential = await resolveAiGatewayCredentialOptional();
     const sandbox = await getSandboxController().get({ sandboxId: meta.sandboxId });
-    await applyFirewallPolicyToSandbox(sandbox, meta, credential?.token);
+    await applyFirewallPolicyToSandbox(sandbox, meta, {
+      aiGatewayToken: credential?.token,
+      codexMode: meta.codexCredentials != null,
+    });
     const now = Date.now();
     const durationMs = now - syncStart;
     const outcome: FirewallSyncOutcome = {
