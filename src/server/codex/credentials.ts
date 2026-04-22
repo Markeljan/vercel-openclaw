@@ -75,7 +75,11 @@ export function buildAuthProfilesJson(creds: CodexCredentials): string {
       ? { accountId: creds.accountId }
       : {}),
   };
-  return JSON.stringify({ [CODEX_AUTH_PROFILE_KEY]: entry }, null, 2);
+  return JSON.stringify(
+    { profiles: { [CODEX_AUTH_PROFILE_KEY]: entry } },
+    null,
+    2,
+  );
 }
 
 /**
@@ -111,7 +115,23 @@ export function parsePastedCodexPayload(raw: string): CodexCredentials {
 
   const obj = parsed as Record<string, unknown>;
 
-  // Shape (3): full auth-profiles.json map — extract the default entry.
+  // Shape (3a): profile-wrapped auth-profiles.json — `{ profiles: { "openai-codex:codex-cli": {...} } }`.
+  if (
+    obj.profiles &&
+    typeof obj.profiles === "object" &&
+    !Array.isArray(obj.profiles) &&
+    CODEX_AUTH_PROFILE_KEY in (obj.profiles as Record<string, unknown>)
+  ) {
+    const entry = (obj.profiles as Record<string, unknown>)[CODEX_AUTH_PROFILE_KEY];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(
+        `auth-profiles entry "${CODEX_AUTH_PROFILE_KEY}" must be an object.`,
+      );
+    }
+    return normalizeCodexCredentialsForStorage(entry as Record<string, unknown>);
+  }
+
+  // Shape (3b): unwrapped auth-profiles.json — `{ "openai-codex:codex-cli": {...} }`.
   if (CODEX_AUTH_PROFILE_KEY in obj) {
     const entry = obj[CODEX_AUTH_PROFILE_KEY];
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
