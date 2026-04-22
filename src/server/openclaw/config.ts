@@ -481,7 +481,7 @@ export function buildGatewayConfig(
   if (codexProfile) {
     const auth = (config.auth as Record<string, unknown>) ?? {};
     const profiles = (auth.profiles as Record<string, unknown>) ?? {};
-    profiles["openai-codex:default"] = { provider: "openai-codex", mode: "oauth" };
+    profiles["openai-codex:codex-cli"] = { provider: "openai-codex", mode: "oauth" };
     auth.profiles = profiles;
     config.auth = auth;
 

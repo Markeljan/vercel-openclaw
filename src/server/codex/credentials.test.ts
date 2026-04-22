@@ -104,7 +104,7 @@ describe("redactCodexCredentials", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildAuthProfilesJson", () => {
-  test("emits the OpenClaw-expected shape under openai-codex:default", () => {
+  test("emits the OpenClaw-expected shape under openai-codex:codex-cli", () => {
     const json = buildAuthProfilesJson(makeCreds());
     const parsed = JSON.parse(json) as Record<string, unknown>;
     assert.ok(parsed[CODEX_AUTH_PROFILE_KEY], "default profile entry must exist");
@@ -292,7 +292,7 @@ describe("parsePastedCodexPayload", () => {
 
   test("shape (3): full auth-profiles.json map extracts default entry", () => {
     const raw = JSON.stringify({
-      "openai-codex:default": {
+      "openai-codex:codex-cli": {
         type: "oauth",
         provider: "openai-codex",
         access: "full-acc",
@@ -332,7 +332,7 @@ describe("parsePastedCodexPayload", () => {
   });
 
   test("throws when auth-profiles default entry is malformed", () => {
-    const raw = JSON.stringify({ "openai-codex:default": "not-an-object" });
+    const raw = JSON.stringify({ "openai-codex:codex-cli": "not-an-object" });
     assert.throws(
       () => parsePastedCodexPayload(raw),
       /must be an object/,

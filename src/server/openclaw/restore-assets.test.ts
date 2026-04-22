@@ -341,7 +341,7 @@ test("dynamic restore files include auth-profiles.json when codexCredentials is 
     Record<string, unknown>
   >;
   assert.deepStrictEqual(payload, {
-    "openai-codex:default": {
+    "openai-codex:codex-cli": {
       type: "oauth",
       provider: "openai-codex",
       access: fakeCodexCreds.access,
@@ -365,7 +365,7 @@ test("auth-profiles.json omits accountId field when undefined", () => {
   assert.ok(authFile);
   const entry = (
     JSON.parse(authFile!.content.toString("utf8")) as Record<string, Record<string, unknown>>
-  )["openai-codex:default"]!;
+  )["openai-codex:codex-cli"]!;
   assert.equal("accountId" in entry, false);
 });
 

@@ -165,7 +165,7 @@ export function makeCodexFixture(
         {
           version: 1,
           profiles: {
-            "openai-codex:default": {
+            "openai-codex:codex-cli": {
               provider: "openai-codex",
               accessToken: credentials.accessToken,
               refreshToken: credentials.refreshToken,
@@ -188,7 +188,7 @@ export function makeCodexFixture(
       const openclawConfig: OpenclawConfigShape = {
         auth: {
           profiles: {
-            "openai-codex:default": {
+            "openai-codex:codex-cli": {
               provider: "openai-codex",
               accessToken: credentials.accessToken,
               refreshToken: credentials.refreshToken,
@@ -280,8 +280,8 @@ export function makeCodexFixture(
       profiles?: Record<string, { provider?: string; accessToken?: string; refreshToken?: string; accountId?: string }>;
     };
     assert.ok(parsed.profiles, "auth-profiles.json should have 'profiles'");
-    const profile = parsed.profiles["openai-codex:default"];
-    assert.ok(profile, "auth-profiles.json missing openai-codex:default");
+    const profile = parsed.profiles["openai-codex:codex-cli"];
+    assert.ok(profile, "auth-profiles.json missing openai-codex:codex-cli");
     assert.equal(profile.provider, "openai-codex");
     assert.equal(profile.accessToken, credentials!.accessToken);
     assert.equal(profile.refreshToken, credentials!.refreshToken);
@@ -323,8 +323,8 @@ export function makeCodexFixture(
 
   const assertOpenclawConfig = (config: OpenclawConfigShape): void => {
     if (mode === "codex") {
-      const profile = config.auth?.profiles?.["openai-codex:default"];
-      assert.ok(profile, "openclaw.json missing auth.profiles['openai-codex:default']");
+      const profile = config.auth?.profiles?.["openai-codex:codex-cli"];
+      assert.ok(profile, "openclaw.json missing auth.profiles['openai-codex:codex-cli']");
       assert.equal(profile?.provider, "openai-codex");
       assert.equal(
         config.agents?.defaults?.model?.primary,
