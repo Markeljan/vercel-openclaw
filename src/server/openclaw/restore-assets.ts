@@ -79,29 +79,8 @@ export const OPENCLAW_RESTORE_ASSET_MANIFEST_PATH =
 export const OPENCLAW_CODEX_AUTH_PROFILES_PATH =
   `${OPENCLAW_STATE_DIR}/agents/main/agent/auth-profiles.json`;
 
-// Inlined here while Unit 1 (src/server/codex/credentials.ts) is unmerged.
-// When that lands, re-import from the canonical module.
-export type CodexCredentials = {
-  access: string;
-  refresh: string;
-  expires: number;
-  accountId?: string;
-  updatedAt: number;
-};
-
-export function buildAuthProfilesJson(creds: CodexCredentials): string {
-  const entry: Record<string, unknown> = {
-    type: "oauth",
-    provider: "openai-codex",
-    access: creds.access,
-    refresh: creds.refresh,
-    expires: creds.expires,
-  };
-  if (creds.accountId !== undefined) {
-    entry.accountId = creds.accountId;
-  }
-  return JSON.stringify({ "openai-codex:default": entry });
-}
+import { buildAuthProfilesJson } from "@/server/codex/credentials";
+import type { CodexCredentials } from "@/shared/types";
 
 export type RestoreAssetManifest = {
   version: 1;
@@ -174,8 +153,6 @@ export function buildDynamicRestoreFiles(options: {
   whatsappConfig?: WhatsAppGatewayConfig;
   codexCredentials?: CodexCredentials | null;
 }): { path: string; content: Buffer }[] {
-  // TODO(codex): when Unit 3 lands, pass `codexProfile: options.codexCredentials != null`
-  // to buildGatewayConfig so openclaw.json declares the openai-codex provider.
   const files: { path: string; content: Buffer }[] = [
     {
       path: OPENCLAW_CONFIG_PATH,
@@ -187,6 +164,7 @@ export function buildDynamicRestoreFiles(options: {
           options.slackCredentials,
           options.telegramWebhookSecret,
           options.whatsappConfig,
+          options.codexCredentials != null,
         ),
       ),
     },
