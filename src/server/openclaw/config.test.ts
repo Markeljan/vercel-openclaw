@@ -653,7 +653,7 @@ test("buildGatewayConfig omits auth and keeps default primary when codexProfile 
 test("buildGatewayConfig adds openai-codex auth profile when codexProfile is true", () => {
   const config = buildCodexGatewayConfig();
 
-  assert.deepEqual(config.auth?.profiles?.["openai-codex:default"], {
+  assert.deepEqual(config.auth?.profiles?.["openai-codex:codex-cli"], {
     provider: "openai-codex",
     mode: "oauth",
   });

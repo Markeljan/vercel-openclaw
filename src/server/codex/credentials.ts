@@ -14,7 +14,7 @@ import type { CodexCredentials, SingleMeta } from "@/shared/types";
  */
 
 /** OpenClaw's auth-profiles.json key for the default Codex profile. */
-export const CODEX_AUTH_PROFILE_KEY = "openai-codex:default";
+export const CODEX_AUTH_PROFILE_KEY = "openai-codex:codex-cli";
 
 /**
  * Redacted Codex credential shape safe to surface in admin JSON.
@@ -86,7 +86,7 @@ export function buildAuthProfilesJson(creds: CodexCredentials): string {
  *      account_id }, last_refresh?, expires? }`.
  *   2. A single entry — `{ access, refresh, expires, accountId? }` or the
  *      snake_case equivalent.
- *   3. A full `auth-profiles.json` map — the `openai-codex:default` entry
+ *   3. A full `auth-profiles.json` map — the `openai-codex:codex-cli` entry
  *      is extracted.
  *
  * Throws `Error` on malformed input.

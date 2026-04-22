@@ -98,7 +98,7 @@ const SECRET_REFRESH = "rt_refresh-token-FAKE-LMNOPQRSTUVWX";
 
 function authProfilesMap(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
-    "openai-codex:default": {
+    "openai-codex:codex-cli": {
       type: "oauth",
       provider: "openai-codex",
       access: SECRET_ACCESS,
@@ -247,7 +247,7 @@ test("codex auth: PUT rejects malformed body with 400", async () => {
       JSON.stringify("just a string"),
       JSON.stringify({ foo: "bar" }),
       JSON.stringify({
-        "openai-codex:default": { provider: "openai-codex" },
+        "openai-codex:codex-cli": { provider: "openai-codex" },
       }),
     ];
     for (const body of badRequests) {

@@ -52,7 +52,7 @@ test("codex fixture: writes auth-profiles.json and Codex-aware openclaw.json", a
       agents?: { defaults?: { model?: { primary?: string } } };
     };
     assert.equal(
-      parsed.auth?.profiles?.["openai-codex:default"]?.provider,
+      parsed.auth?.profiles?.["openai-codex:codex-cli"]?.provider,
       "openai-codex",
     );
     assert.equal(parsed.agents?.defaults?.model?.primary, CODEX_MODEL_ID);

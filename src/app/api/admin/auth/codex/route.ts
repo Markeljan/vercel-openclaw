@@ -101,7 +101,7 @@ function parseAuthProfileEntry(entry: unknown): ParsedCodexPayload | null {
 
 /**
  * Parse a pasted codex payload. Accepts:
- * 1. A full `auth-profiles.json` map (e.g. `{ "openai-codex:default": {...} }`).
+ * 1. A full `auth-profiles.json` map (e.g. `{ "openai-codex:codex-cli": {...} }`).
  * 2. A single entry, with either camelCase or snake_case field names.
  * 3. A raw `~/.codex/auth.json` with `tokens: { access_token, ... }` and
  *    optional `last_refresh` timestamp.
