@@ -43,6 +43,10 @@ export function tokenRefreshLockKey(): string {
   return buildKey("lock:token-refresh");
 }
 
+export function codexTokenRefreshLockKey(): string {
+  return buildKey("lock:codex-token-refresh");
+}
+
 export function cronNextWakeKey(): string {
   return buildKey("cron-next-wake-ms");
 }
@@ -162,4 +166,17 @@ export function slackAppConfigKey(): string {
 
 export function slackInstallTokenKey(token: string): string {
   return buildKey(`slack:install-token:${token}`);
+}
+
+/**
+ * Redis key for parallel Codex credential storage.
+ *
+ * The canonical credential store is `meta.codexCredentials`. This key is
+ * reserved for a future refresh-coalescing lock so that concurrent token
+ * refreshes across serverless invocations can serialize without mutating
+ * meta on every attempt. It is intentionally exposed now so Unit 6 can
+ * coordinate across the fleet without introducing a new keyspace helper.
+ */
+export function codexCredentialsKey(): string {
+  return buildKey("codex:credentials");
 }

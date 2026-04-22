@@ -73,6 +73,15 @@ import {
 export const OPENCLAW_RESTORE_ASSET_MANIFEST_PATH =
   `${OPENCLAW_STATE_DIR}/.restore-assets-manifest.json`;
 
+// OpenClaw agent auth-profiles file for OAuth providers (ChatGPT/Codex).
+// The agent id "main" is hardcoded — follow-up needed if operators customize
+// the agent id in openclaw.json.
+export const OPENCLAW_CODEX_AUTH_PROFILES_PATH =
+  `${OPENCLAW_STATE_DIR}/agents/main/agent/auth-profiles.json`;
+
+import { buildAuthProfilesJson } from "@/server/codex/credentials";
+import type { CodexCredentials } from "@/shared/types";
+
 export type RestoreAssetManifest = {
   version: 1;
   sha256: string;
@@ -142,6 +151,7 @@ export function buildDynamicRestoreFiles(options: {
   telegramWebhookSecret?: string;
   slackCredentials?: { botToken: string; signingSecret: string };
   whatsappConfig?: WhatsAppGatewayConfig;
+  codexCredentials?: CodexCredentials | null;
 }): { path: string; content: Buffer }[] {
   const files: { path: string; content: Buffer }[] = [
     {
@@ -154,6 +164,7 @@ export function buildDynamicRestoreFiles(options: {
           options.slackCredentials,
           options.telegramWebhookSecret,
           options.whatsappConfig,
+          options.codexCredentials != null,
         ),
       ),
     },
@@ -163,6 +174,13 @@ export function buildDynamicRestoreFiles(options: {
     files.push({
       path: OPENCLAW_TELEGRAM_BOT_TOKEN_PATH,
       content: Buffer.from(options.telegramBotToken),
+    });
+  }
+
+  if (options.codexCredentials) {
+    files.push({
+      path: OPENCLAW_CODEX_AUTH_PROFILES_PATH,
+      content: Buffer.from(buildAuthProfilesJson(options.codexCredentials)),
     });
   }
 
@@ -220,6 +238,7 @@ export type BootstrapFilesOptions = {
   telegramWebhookSecret?: string;
   slackCredentials?: { botToken: string; signingSecret: string };
   whatsappConfig?: WhatsAppGatewayConfig;
+  codexCredentials?: CodexCredentials | null;
 };
 
 /**
@@ -245,6 +264,7 @@ export function buildBootstrapFiles(
       telegramWebhookSecret: options.telegramWebhookSecret,
       slackCredentials: options.slackCredentials,
       whatsappConfig: options.whatsappConfig,
+      codexCredentials: options.codexCredentials,
     }),
     {
       path: OPENCLAW_GATEWAY_TOKEN_PATH,

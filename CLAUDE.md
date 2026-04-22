@@ -76,10 +76,12 @@ Output:
 - Human-readable progress to stderr (suppressed by `--json-only`)
 - Exit code 0 (all pass) or 1 (any fail)
 
-Safe phases (always run): `health`, `status`, `gatewayProbe`, `firewallRead`, `channelsSummary`, `sshEcho`, `chatCompletions`, `channelRoundTrip`.
-Destructive phases (opt-in): `ensureRunning`, `chatCompletions`, `channelRoundTrip`, `channelWakeFromSleep`, `chatCompletions` (post-wake), `selfHealTokenRefresh`.
+Safe phases (always run): `health`, `status`, `gatewayProbe`, `firewallRead`, `channelsSummary`, `sshEcho`, `codexStatus`, `chatCompletions`, `channelRoundTrip`.
+Destructive phases (opt-in): `ensureRunning`, `chatCompletions`, `channelRoundTrip`, `codexChatCompletions`, `codexWakeFromSleep`, `channelWakeFromSleep`, `chatCompletions` (post-wake), `selfHealTokenRefresh`.
 
 Channel phases (`channelRoundTrip`, `channelWakeFromSleep`) call `POST /api/admin/channel-secrets` with `{ channel, body }` so the server signs and dispatches synthetic webhooks. Raw channel secrets never leave the server, and the phases still verify the full ingestion + drain + completions pipeline. They gracefully skip if no channels are configured.
+
+Codex phases (`codexStatus`, `codexChatCompletions`, `codexWakeFromSleep`) read `GET /api/admin/auth/codex` to detect whether Codex credentials are configured. They skip gracefully (`passed: true`, `detail.skipped: true`) when `connected: false` or the endpoint is not deployed (404). Any response body tail included in failure detail is sanitized: `sk-*`, `rt_*`, and `Bearer ...` substrings are replaced with `[REDACTED]` before logging.
 
 ## Routes
 
@@ -339,6 +341,19 @@ On readiness timeout, `openclaw.gateway_wait_exhausted` is logged (Vercel functi
 
 The startup script also installs shell hooks used for firewall learning.
 
+### Codex provider credentials
+
+Operators can opt into OpenClaw's `openai-codex` provider (GPT-5.4 via `chatgpt.com/backend-api/codex/responses`) by pasting a ChatGPT/Codex auth payload into the admin UI. AI Gateway remains the default when `meta.codexCredentials` is null.
+
+- **Storage**: `meta.codexCredentials` holds the pasted `auth-profiles.json` payload (tokens, account ID, expiry). The feature flag is `meta.codexCredentials != null`. No environment variables are introduced.
+- **Delivery path**: `buildDynamicRestoreFiles()` writes `/home/vercel-sandbox/.openclaw/agents/main/agent/auth-profiles.json` on every restore when credentials are present. Credentials must be delivered via restore-assets (not env vars) — OpenClaw reads them from that file with no env-var equivalent.
+- **openclaw.json**: when Codex is active, `buildGatewayConfig()` adds `auth.profiles["openai-codex:default"]` and sets `agents.defaults.model.primary = "openai-codex/gpt-5.4"`.
+- **Firewall**: Codex mode skips the AI Gateway transform rule and always allows `auth.openai.com` and `chatgpt.com` (added even in enforcing mode, regardless of the user allowlist).
+- **Host-side refresh**: `refreshCodexCredentialsIfExpiring()` runs before restore and refreshes tokens against `auth.openai.com` when expiry is near. The refresh call is serialized via `codexTokenRefreshLockKey()` to avoid clobbering rotated refresh tokens.
+- **Preflight**: the deployment contract surfaces `activeProvider: "ai-gateway" | "codex"`. Codex credentials satisfy the AI Gateway readiness requirement in preflight and connectability checks.
+
+Known caveat — **refresh-token rotation**: OpenAI rotates the refresh token on every refresh. Operators running the `codex` CLI locally on the same account while this app is active will see one side invalidate the other's refresh token. Re-paste after local rotation.
+
 ## Proxy
 
 Main files:
@@ -540,6 +555,7 @@ When adding new `logInfo` calls to code that runs on every request (status polli
 - Telegram `webhookSecret` must flow through ALL config paths: `buildGatewayConfig()`, `buildDynamicResumeFiles()`, `syncRestoreAssetsIfNeeded()`, and `computeGatewayConfigHash()`. Missing it causes OpenClaw config validation failure ("webhookUrl requires webhookSecret").
 - `_setSandboxControllerForTesting()` only works when `NODE_ENV=test`. In production, `getSandboxController()` always returns the real `@vercel/sandbox` v2 beta SDK wrapper. This prevents fake sandbox names from contaminating Redis metadata.
 - Redis store only connects on deployed Vercel runtimes (`isVercelDeployment()`). Local dev and CI always use the memory store, even if `REDIS_URL`/`KV_URL` env vars are present.
+- Codex credentials MUST be delivered via restore-assets (not env), since OpenClaw reads them from `~/.openclaw/agents/<agentId>/agent/auth-profiles.json` with no env-var equivalent. The 4KB env payload limit is irrelevant here.
 
 ## Verification
 

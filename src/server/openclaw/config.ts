@@ -274,6 +274,7 @@ export function buildGatewayConfig(
   slackCredentials?: { botToken: string; signingSecret: string },
   telegramWebhookSecret?: string,
   whatsappConfig?: WhatsAppGatewayConfig,
+  codexProfile?: boolean,
 ): string {
   const controlUi: Record<string, unknown> = {
     // The proxy enforces auth before any request reaches the sandbox gateway,
@@ -473,6 +474,28 @@ export function buildGatewayConfig(
     config.channels = channels;
   }
 
+  // ChatGPT/Codex provider: routes agent traffic to chatgpt.com/backend-api
+  // via OpenClaw's openai-codex provider.  Credentials live in a separate
+  // auth-profiles.json file written by the Codex credential bootstrap path —
+  // the config only declares the profile and switches the default model.
+  if (codexProfile) {
+    const auth = (config.auth as Record<string, unknown>) ?? {};
+    const profiles = (auth.profiles as Record<string, unknown>) ?? {};
+    profiles["openai-codex:codex-cli"] = { provider: "openai-codex", mode: "oauth" };
+    auth.profiles = profiles;
+    config.auth = auth;
+
+    const agents = config.agents as {
+      defaults: { model: { primary: string; fallbacks?: string[] } };
+    };
+    const existingFallbacks = agents.defaults.model.fallbacks ?? [];
+    const fallbacks = ["openai/gpt-5.4", ...existingFallbacks];
+    agents.defaults.model = {
+      primary: "openai-codex/gpt-5.4",
+      fallbacks: [...new Set(fallbacks)],
+    };
+  }
+
   return JSON.stringify(config);
 }
 
@@ -484,6 +507,8 @@ export type GatewayConfigHashInput = {
   telegramWebhookSecret?: string;
   slackCredentials?: { botToken: string; signingSecret: string };
   whatsappConfig?: WhatsAppGatewayConfig;
+  codexProfile?: boolean;
+  codexCredentialsUpdatedAt?: number | null;
 };
 
 export function computeGatewayConfigHash(input: GatewayConfigHashInput): string {
@@ -494,11 +519,15 @@ export function computeGatewayConfigHash(input: GatewayConfigHashInput): string 
     input.slackCredentials,
     input.telegramWebhookSecret,
     input.whatsappConfig,
+    input.codexProfile,
   );
-  return createHash("sha256")
+  const hash = createHash("sha256")
     .update(`gateway-config-hash:v${GATEWAY_CONFIG_HASH_VERSION}\0`)
-    .update(configJson)
-    .digest("hex");
+    .update(configJson);
+  if (input.codexCredentialsUpdatedAt != null) {
+    hash.update("\0codex-updated-at:").update(String(input.codexCredentialsUpdatedAt));
+  }
+  return hash.digest("hex");
 }
 
 export function buildForcePairScript(): string {

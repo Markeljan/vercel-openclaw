@@ -20,6 +20,7 @@ import {
   resolveAiGatewayCredentialOptional,
   isVercelDeployment,
 } from "@/server/env";
+import { refreshCodexCredentialsIfExpiring } from "@/server/codex/refresh";
 import { applyFirewallPolicyToSandbox, toNetworkPolicy } from "@/server/firewall/policy";
 import { logError, logInfo, logWarn } from "@/server/log";
 import { setupOpenClaw, CommandFailedError } from "@/server/openclaw/bootstrap";
@@ -938,6 +939,7 @@ export async function syncGatewayConfigToSandbox(): Promise<LiveConfigSyncResult
       ? { botToken: slackConfig.botToken, signingSecret: slackConfig.signingSecret }
       : undefined,
     whatsappConfig: toWhatsAppGatewayConfig(meta.channels.whatsapp),
+    codexCredentials: meta.codexCredentials ?? undefined,
   });
 
   const sandboxId = meta.sandboxId;
@@ -1086,6 +1088,7 @@ export async function ensureRunningSandboxDynamicConfigFresh(input: {
       ? { botToken: slackConfig.botToken, signingSecret: slackConfig.signingSecret }
       : undefined,
     whatsappConfig: toWhatsAppGatewayConfig(meta.channels.whatsapp),
+    codexCredentials: meta.codexCredentials ?? undefined,
   });
 
   let sandbox: SandboxHandle;
@@ -1396,6 +1399,7 @@ export async function prepareRestoreTarget(input: {
         ? { botToken: slackConfig.botToken, signingSecret: slackConfig.signingSecret }
         : undefined,
       whatsappConfig: toWhatsAppGatewayConfig(meta.channels.whatsapp),
+      codexCredentials: meta.codexCredentials ?? undefined,
     });
     actions.push({ id: "sync-static-assets", status: "completed", message: "runtime assets fresh" });
   } catch (err) {
@@ -2319,7 +2323,10 @@ async function refreshAiGatewayToken(sandbox: SandboxHandle, sandboxId: string):
   // injects the Authorization header on outbound requests to ai-gateway.
   // No file writes or gateway restarts needed.
   const meta = await getInitializedMeta();
-  await applyFirewallPolicyToSandbox(sandbox, meta, freshToken);
+  await applyFirewallPolicyToSandbox(sandbox, meta, {
+    aiGatewayToken: freshToken,
+    codexMode: meta.codexCredentials != null,
+  });
 
   logInfo("sandbox.token_refresh.policy_updated", { sandboxId });
 
@@ -2668,6 +2675,26 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
     return getInitializedMeta();
   }
 
+  // Preemptively refresh Codex credentials if the operator has connected the
+  // openai-codex provider and the access token is nearing expiry. Failures
+  // here are logged but do not block startup — the sandbox will start with
+  // stale creds, OpenClaw will retry on its own, and the next ensure cycle
+  // will try again.
+  try {
+    const codexRefresh = await refreshCodexCredentialsIfExpiring({ meta: current });
+    if (codexRefresh.refreshed) {
+      logInfo("sandbox.codex.refreshed_before_restore", ctx({}));
+    } else if (codexRefresh.error) {
+      logWarn("sandbox.codex.refresh_failed_before_restore", ctx({
+        error: codexRefresh.error,
+      }));
+    }
+  } catch (err) {
+    logWarn("sandbox.codex.refresh_threw_before_restore", ctx({
+      error: err instanceof Error ? err.message : String(err),
+    }));
+  }
+
   await clearSetupProgress(instanceId);
   const initialProgress = await beginSetupProgress({
     attemptId,
@@ -2902,6 +2929,7 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
         telegramWebhookSecret: latest.channels.telegram?.webhookSecret,
         slackCredentials: validatedSlackCreds ?? undefined,
         whatsappConfig: toWhatsAppGatewayConfig(latest.channels.whatsapp),
+        codexCredentials: latest.codexCredentials ?? undefined,
       });
       const assetSyncMs = Date.now() - assetSyncStart;
 
@@ -2966,7 +2994,10 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
       const firewallStart = Date.now();
       try {
         progress.setPhase("applying-firewall", `Applying ${latest.firewall.mode} firewall policy`);
-        await applyFirewallPolicyToSandbox(sandbox, latest, freshApiKey);
+        await applyFirewallPolicyToSandbox(sandbox, latest, {
+          aiGatewayToken: freshApiKey,
+          codexMode: latest.codexCredentials != null,
+        });
       } catch (err) {
         const firewallError = err instanceof Error ? err.message : String(err);
         logWarn("sandbox.create.persistent_resume.firewall_sync_failed", ctx({
@@ -3067,6 +3098,7 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
       telegramWebhookSecret: latest.channels.telegram?.webhookSecret,
       slackCredentials: slackCfg ?? undefined,
       whatsappConfig: toWhatsAppGatewayConfig(latest.channels.whatsapp),
+      codexCredentials: latest.codexCredentials ?? undefined,
       progress,
     });
 
@@ -3087,10 +3119,11 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
     });
 
     // Apply firewall policy and record structured outcome before marking running.
+    const pendingCodexMode = pending.codexCredentials != null;
     const firewallPolicy = toNetworkPolicy(
       pending.firewall.mode,
       pending.firewall.allowlist,
-      apiKey,
+      { aiGatewayToken: apiKey, codexMode: pendingCodexMode },
     );
     const firewallPolicyHash = createHash("sha256")
       .update(JSON.stringify(firewallPolicy))
@@ -3101,7 +3134,10 @@ async function createAndBootstrapSandboxWithinLifecycleLock(
     const firewallStartedAt = Date.now();
     try {
       progress.setPhase("applying-firewall", `Applying ${pending.firewall.mode} firewall policy`);
-      await applyFirewallPolicyToSandbox(sandbox, pending, apiKey);
+      await applyFirewallPolicyToSandbox(sandbox, pending, {
+        aiGatewayToken: apiKey,
+        codexMode: pendingCodexMode,
+      });
       firewallApplied = true;
     } catch (err) {
       firewallError = err instanceof Error ? err.message : String(err);
@@ -3199,6 +3235,7 @@ async function syncRestoreAssetsIfNeeded(
     telegramWebhookSecret?: string;
     slackCredentials?: { botToken: string; signingSecret: string };
     whatsappConfig?: import("@/server/openclaw/config").WhatsAppGatewayConfig;
+    codexCredentials?: import("@/shared/types").CodexCredentials | null;
   },
 ): Promise<{ skippedStaticAssetSync: boolean; assetSha256: string }> {
   const manifest = buildRestoreAssetManifest();
@@ -3221,6 +3258,7 @@ async function syncRestoreAssetsIfNeeded(
     telegramWebhookSecret: options.telegramWebhookSecret,
     slackCredentials: options.slackCredentials,
     whatsappConfig: options.whatsappConfig,
+    codexCredentials: options.codexCredentials ?? undefined,
   });
 
   const skippedStaticAssetSync = existingSha === manifest.sha256;
