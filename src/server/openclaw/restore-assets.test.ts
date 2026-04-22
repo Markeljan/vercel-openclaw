@@ -336,18 +336,19 @@ test("dynamic restore files include auth-profiles.json when codexCredentials is 
   const authFile = files.find((f) => f.path === OPENCLAW_CODEX_AUTH_PROFILES_PATH);
   assert.ok(authFile, "auth-profiles.json should be included");
 
-  const payload = JSON.parse(authFile!.content.toString("utf8")) as Record<
-    string,
-    Record<string, unknown>
-  >;
+  const payload = JSON.parse(authFile!.content.toString("utf8")) as {
+    profiles: Record<string, Record<string, unknown>>;
+  };
   assert.deepStrictEqual(payload, {
-    "openai-codex:codex-cli": {
-      type: "oauth",
-      provider: "openai-codex",
-      access: fakeCodexCreds.access,
-      refresh: fakeCodexCreds.refresh,
-      expires: fakeCodexCreds.expires,
-      accountId: fakeCodexCreds.accountId,
+    profiles: {
+      "openai-codex:codex-cli": {
+        type: "oauth",
+        provider: "openai-codex",
+        access: fakeCodexCreds.access,
+        refresh: fakeCodexCreds.refresh,
+        expires: fakeCodexCreds.expires,
+        accountId: fakeCodexCreds.accountId,
+      },
     },
   });
 });
@@ -363,9 +364,10 @@ test("auth-profiles.json omits accountId field when undefined", () => {
 
   const authFile = files.find((f) => f.path === OPENCLAW_CODEX_AUTH_PROFILES_PATH);
   assert.ok(authFile);
-  const entry = (
-    JSON.parse(authFile!.content.toString("utf8")) as Record<string, Record<string, unknown>>
-  )["openai-codex:codex-cli"]!;
+  const parsed = JSON.parse(authFile!.content.toString("utf8")) as {
+    profiles: Record<string, Record<string, unknown>>;
+  };
+  const entry = parsed.profiles["openai-codex:codex-cli"]!;
   assert.equal("accountId" in entry, false);
 });
 

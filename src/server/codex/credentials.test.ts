@@ -104,11 +104,13 @@ describe("redactCodexCredentials", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildAuthProfilesJson", () => {
-  test("emits the OpenClaw-expected shape under openai-codex:codex-cli", () => {
+  test("emits the OpenClaw-expected shape under profiles.openai-codex:codex-cli", () => {
     const json = buildAuthProfilesJson(makeCreds());
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    assert.ok(parsed[CODEX_AUTH_PROFILE_KEY], "default profile entry must exist");
-    const entry = parsed[CODEX_AUTH_PROFILE_KEY] as Record<string, unknown>;
+    const parsed = JSON.parse(json) as {
+      profiles: Record<string, Record<string, unknown>>;
+    };
+    assert.ok(parsed.profiles, "top-level profiles wrapper must exist");
+    const entry = parsed.profiles[CODEX_AUTH_PROFILE_KEY]!;
     assert.equal(entry.type, "oauth");
     assert.equal(entry.provider, "openai-codex");
     assert.equal(entry.access, "eyJhbGciOi.access-jwt");
@@ -126,13 +128,13 @@ describe("buildAuthProfilesJson", () => {
   test("omits accountId when null or undefined", () => {
     const noField = JSON.parse(
       buildAuthProfilesJson(makeCreds({ accountId: undefined as unknown as null })),
-    ) as Record<string, Record<string, unknown>>;
-    assert.ok(!Object.hasOwn(noField[CODEX_AUTH_PROFILE_KEY], "accountId"));
+    ) as { profiles: Record<string, Record<string, unknown>> };
+    assert.ok(!Object.hasOwn(noField.profiles[CODEX_AUTH_PROFILE_KEY]!, "accountId"));
 
     const nullField = JSON.parse(
       buildAuthProfilesJson(makeCreds({ accountId: null })),
-    ) as Record<string, Record<string, unknown>>;
-    assert.ok(!Object.hasOwn(nullField[CODEX_AUTH_PROFILE_KEY], "accountId"));
+    ) as { profiles: Record<string, Record<string, unknown>> };
+    assert.ok(!Object.hasOwn(nullField.profiles[CODEX_AUTH_PROFILE_KEY]!, "accountId"));
   });
 });
 
